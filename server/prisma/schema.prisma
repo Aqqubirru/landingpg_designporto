@@ -1,0 +1,110 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  super_admin
+  admin
+}
+
+enum ProjectStatus {
+  draft
+  published
+}
+
+enum InquiryStatus {
+  unread
+  read
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String    @db.VarChar(100)
+  email         String    @unique @db.VarChar(150)
+  passwordHash  String    @map("password_hash")
+  role          UserRole  @default(admin)
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  projects      Project[]
+
+  @@map("users")
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @db.VarChar(100)
+  slug        String    @unique @db.VarChar(120)
+  description String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  projects    Project[]
+
+  @@map("categories")
+}
+
+model Project {
+  id             String        @id @default(uuid())
+  categoryId     String        @map("category_id")
+  createdBy      String        @map("created_by")
+  title          String        @db.VarChar(200)
+  slug           String        @unique @db.VarChar(220)
+  description    String?
+  specifications String?
+  status         ProjectStatus @default(draft)
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  category       Category        @relation(fields: [categoryId], references: [id])
+  createdByUser  User            @relation(fields: [createdBy], references: [id])
+  images         ProjectImage[]
+
+  @@map("projects")
+}
+
+model ProjectImage {
+  id         String   @id @default(uuid())
+  projectId  String   @map("project_id")
+  imageUrl   String   @map("image_url")
+  publicId   String   @map("public_id") @db.VarChar(255)
+  isCover    Boolean  @default(false) @map("is_cover")
+  sortOrder  Int      @default(0) @map("sort_order") @db.SmallInt
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_images")
+}
+
+model Inquiry {
+  id        String        @id @default(uuid())
+  name      String        @db.VarChar(100)
+  email     String        @db.VarChar(150)
+  message   String
+  status    InquiryStatus @default(unread)
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  @@map("inquiries")
+}
+
+model ChatbotLog {
+  id           String   @id @default(uuid())
+  sessionId    String   @map("session_id") @db.VarChar(100)
+  userMessage  String   @map("user_message")
+  botResponse  String   @map("bot_response")
+  escalated    Boolean  @default(false)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("chatbot_logs")
+}
